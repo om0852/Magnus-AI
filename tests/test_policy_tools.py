@@ -38,9 +38,28 @@ def test_policy_high_risk_gate():
     allowed_approved, _ = policy_engine.check_execution_permission(task_high)
     assert allowed_approved is True
 
+    # Destructive Command Violation Test (rmdir /s /q c:\)
+    task_destruct = Task(task_id="t_bad", raw_prompt="run command rmdir /s /q c:\\", intent="EXECUTE_COMMAND", entities={"command": "rmdir /s /q c:\\"})
+    planner.plan_task(task_destruct)
+    try:
+        policy_engine.check_execution_permission(task_destruct)
+        assert False, "Should have raised PermissionError for destructive command!"
+    except PermissionError as pe:
+        assert "SECURITY VIOLATION BLOCKED" in str(pe)
+
+    # Protected System Directory Modification Test (c:\windows\system32)
+    task_sys = Task(task_id="t_sys", raw_prompt="delete file c:\\windows\\system32\\kernel32.dll", intent="DELETE_FILE", entities={"path": "c:\\windows\\system32\\kernel32.dll"})
+    planner.plan_task(task_sys)
+    try:
+        policy_engine.check_execution_permission(task_sys)
+        assert False, "Should have raised PermissionError for system directory tampering!"
+    except PermissionError as pe:
+        assert "SECURITY VIOLATION BLOCKED" in str(pe)
+
     # Cleanup
     if os.path.exists(db_path):
         try:
             os.remove(db_path)
         except Exception:
             pass
+
