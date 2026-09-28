@@ -56,11 +56,14 @@ class TaskStateMachine:
                 parsed = self.nlp_engine.parse(task.raw_prompt)
                 task.intent = parsed.get("intent")
                 task.confidence = parsed.get("confidence", 0.0)
-                task.entities = parsed.get("entities", {})
+                entities = parsed.get("entities", {})
+                entities["agent_name"] = parsed.get("agent_name") or self._determine_agent_name(task.intent)
+                task.entities = entities
                 task.status = TaskStatus.UNDERSTOOD
                 task.updated_at = time.time()
                 self.db.save_task(task)
                 await self.event_bus.publish("task_understood", task.task_id, task.to_dict())
+
 
             # 2. PLANNED
             if task.status == TaskStatus.UNDERSTOOD:
@@ -231,3 +234,26 @@ class TaskStateMachine:
         elif r_str == "MEDIUM":
             return "WRITE_MUTATION_PERMITTED"
         return "READ_EXECUTE_PERMITTED"
+
+    def _determine_agent_name(self, intent: str) -> str:
+        mapping = {
+            "OPEN_APP": "os_agent",
+            "CLOSE_APP": "os_agent",
+            "CHANGE_VOLUME": "os_agent",
+            "TAKE_SCREENSHOT": "os_agent",
+            "SEARCH_WEB": "browser_agent",
+            "READ_WEB_DOCS": "browser_agent",
+            "AUTOMATE_PLATFORM_LOGIN": "browser_agent",
+            "DEVELOP_PROJECT_ANTIGRAVITY": "ide_agent",
+            "DESIGN_RESUME": "resume_agent",
+            "INSPECT_AUDIT_LOGS": "security_agent",
+            "QUERY_DATABASE": "database_agent",
+            "READ_SCREEN_TEXT": "vision_agent",
+            "SET_TIMER_REMINDER": "scheduler_agent",
+            "SCHEDULE_DAILY_CRON": "scheduler_agent",
+            "RUN_POWERSHELL_CMD": "cli_agent",
+            "GREETING": "llm_agent",
+            "GET_PROGRESS": "llm_agent"
+        }
+        return mapping.get(intent, "router_agent")
+
