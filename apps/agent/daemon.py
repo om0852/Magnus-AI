@@ -125,6 +125,19 @@ class MagnasDaemon:
         web_server.init_web_server(self.db, self.event_bus, self.approval_mgr, self.task_machine)
 
     def run(self):
+        # Check if port is already bound
+        import socket
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        port_in_use = sock.connect_ex((self.host, self.port)) == 0
+        sock.close()
+
+        if port_in_use:
+            print(f"==================================================")
+            print(f" MAGNAS DAEMON ALREADY ONLINE")
+            print(f" Server is already active at: http://{self.host}:{self.port}")
+            print(f"==================================================")
+            return
+
         print(f"==================================================")
         print(f" MAGNAS DAEMON INITIALIZED")
         print(f" Server running at: http://{self.host}:{self.port}")
@@ -139,6 +152,7 @@ class MagnasDaemon:
                     httpd.serve_forever()
                 except KeyboardInterrupt:
                     print("Stopping daemon...")
+
 
 if __name__ == "__main__":
     daemon = MagnasDaemon()
