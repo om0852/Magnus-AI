@@ -182,6 +182,38 @@ class InferenceEngine:
                 "entities": {}
             }
 
+        # Priority Check: Self-Learning Command Intents
+        if lower in ["list learned rules", "show learned rules", "view learned rules"]:
+            return {
+                "intent": "LIST_LEARNED_RULES",
+                "confidence": 0.99,
+                "entities": {}
+            }
+
+        m_forget = re.search(r"^(?:forget|delete|remove)\s+(?:rule\s+)?(rule_[a-f0-9]+)$", lower)
+        if m_forget:
+            return {
+                "intent": "FORGET_LEARNED_RULE",
+                "confidence": 0.99,
+                "entities": {"rule_id": m_forget.group(1)}
+            }
+
+        m_learn = re.search(r"^(?:learn|teach|remember|fix\s+issue\s+for)\s+['\"]?(.+?)['\"]?\s+(?:to\s+|means\s+|as\s+)?(?:use\s+)?(?:intent\s+)?([a-zA-Z0-9_]+)\s*(?:with\s+tool\s+([a-zA-Z0-9_]+))?", lower)
+        if m_learn:
+            pat = m_learn.group(1).strip()
+            intent_val = m_learn.group(2).strip().upper()
+            tool_val = m_learn.group(3).strip().lower() if m_learn.group(3) else intent_val.lower()
+            return {
+                "intent": "LEARN_CORRECTION",
+                "confidence": 0.99,
+                "entities": {
+                    "prompt_pattern": pat,
+                    "correct_intent": intent_val,
+                    "target_tool": tool_val,
+                    "parameters": {}
+                }
+            }
+
         # Priority Check: Antigravity IDE Project Development Intent
         if "antigravity" in lower and any(w in lower for w in ["develop", "build", "create", "make", "project", "app", "ide"]):
             m_proj = re.search(r"(?:develop|build|create|make)\s+(?:a\s+|an\s+)?([a-zA-Z0-9_\-\s]+?)(?:\s+using|\s+in|\s+with|\s+on|$)", lower)

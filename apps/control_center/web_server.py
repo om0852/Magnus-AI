@@ -36,6 +36,19 @@ class CommandRequest(BaseModel):
 class SpeakRequest(BaseModel):
     text: str
 
+class LearnRuleRequest(BaseModel):
+    pattern: str
+    target_intent: str
+    target_tool: str
+    parameters: Optional[dict] = None
+
+class FixIssueRequest(BaseModel):
+    prompt: str
+    error_message: Optional[str] = ""
+    corrected_intent: str
+    target_tool: str
+    parameters: Optional[dict] = None
+
 if HAS_FASTAPI:
     app = FastAPI(title="Magnas Control Center API", version="0.2.0")
 
@@ -151,6 +164,34 @@ if HAS_FASTAPI:
             wake_word_listener.stop()
 
         return {"success": True, "active": wake_word_listener.is_running}
+
+    # Self-Learning & Issue Correction APIs
+    @app.get("/api/self-learning/rules")
+    def list_self_learning_rules():
+        from core.memory.self_learning import self_learning_engine
+        db = self_learning_engine._get_db()
+        rules = db.list_learned_rules() if db else []
+        return {"success": True, "rules": rules}
+
+    @app.post("/api/self-learning/learn")
+    def create_self_learning_rule(req: LearnRuleRequest):
+        from core.memory.self_learning import self_learning_engine
+        res = self_learning_engine.learn_correction(req.pattern, req.target_intent, req.target_tool, req.parameters or {})
+        return {"success": True, "output": res}
+
+    @app.delete("/api/self-learning/rules/{rule_id}")
+    def delete_self_learning_rule(rule_id: str):
+        from core.memory.self_learning import self_learning_engine
+        res = self_learning_engine.forget_rule(rule_id)
+        return {"success": True, "output": res}
+
+    @app.post("/api/self-learning/fix-issue")
+    def fix_issue_and_learn(req: FixIssueRequest):
+        from core.memory.self_learning import self_learning_engine
+        res = self_learning_engine.auto_fix_and_learn_failure(
+            req.prompt, req.error_message or "", req.corrected_intent, req.target_tool, req.parameters or {}
+        )
+        return {"success": True, "output": res}
 
     @app.websocket("/ws")
     async def websocket_endpoint(websocket: WebSocket):

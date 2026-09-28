@@ -43,13 +43,13 @@ def learn_pattern_correction(prompt_pattern: str, correct_intent: str, target_to
 )
 def list_learned_rules() -> Dict[str, Any]:
     try:
-        from apps.control_center.web_server import db_ref
-        if db_ref:
-            rules = db_ref.list_learned_rules()
+        db = self_learning_engine._get_db()
+        if db:
+            rules = db.list_learned_rules()
             if rules:
                 formatted = "\n".join([f"- [{r['rule_id']}] Pattern: '{r['pattern']}' -> Intent: {r['target_intent']} ({r['target_tool']})" for r in rules])
                 return {"success": True, "output": f"Learned Rule Corrections ({len(rules)}):\n{formatted}", "rules": rules}
-            return {"success": True, "output": "No custom learned rule corrections stored yet."}
+            return {"success": True, "output": "No custom learned rule corrections stored yet.", "rules": []}
         return {"success": False, "error": "Database session unavailable."}
     except Exception as e:
         return {"success": False, "error": str(e)}
@@ -68,10 +68,7 @@ def list_learned_rules() -> Dict[str, Any]:
 )
 def forget_learned_rule(rule_id: str) -> Dict[str, Any]:
     try:
-        from apps.control_center.web_server import db_ref
-        if db_ref:
-            db_ref.delete_learned_rule(rule_id)
-            return {"success": True, "output": f"Successfully deleted learned rule '{rule_id}'."}
-        return {"success": False, "error": "Database session unavailable."}
+        res = self_learning_engine.forget_rule(rule_id)
+        return {"success": True, "output": res}
     except Exception as e:
         return {"success": False, "error": str(e)}

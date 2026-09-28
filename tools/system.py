@@ -25,8 +25,30 @@ except ImportError:
     }
 )
 def change_volume(amount: int = 10, direction: str = "increase") -> str:
+    if os.name == 'nt':
+        import ctypes
+        VK_VOLUME_MUTE = 0xAD
+        VK_VOLUME_DOWN = 0xAE
+        VK_VOLUME_UP = 0xAF
+        try:
+            if direction == "mute":
+                ctypes.windll.user32.keybd_event(VK_VOLUME_MUTE, 0, 0, 0)
+                ctypes.windll.user32.keybd_event(VK_VOLUME_MUTE, 0, 2, 0)
+                return "Toggled system volume mute via Windows System API."
+
+            vk = VK_VOLUME_UP if direction in ["increase", "up"] else VK_VOLUME_DOWN
+            # In Windows, each VK_VOLUME step is ~2% volume adjustment.
+            presses = max(1, int(amount / 2))
+            for _ in range(presses):
+                ctypes.windll.user32.keybd_event(vk, 0, 0, 0)
+                ctypes.windll.user32.keybd_event(vk, 0, 2, 0)
+                time.sleep(0.01)
+            return f"{direction.capitalize()}d system volume by ~{amount}% ({presses} hardware volume key signals sent successfully)."
+        except Exception as e:
+            pass
+
     if HAS_PYAUTOGUI:
-        key = "volumeup" if direction == "increase" else "volumedown"
+        key = "volumeup" if direction in ["increase", "up"] else "volumedown"
         if direction == "mute":
             pyautogui.press("volumemute")
             return "Toggled system volume mute"

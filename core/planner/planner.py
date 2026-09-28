@@ -311,6 +311,49 @@ class TaskPlanner:
                 risk_level=RiskLevel.HIGH
             ))
 
+        elif intent == "LEARN_CORRECTION":
+            pat = entities.get("prompt_pattern", "")
+            c_intent = entities.get("correct_intent", "UNKNOWN")
+            t_tool = entities.get("target_tool", "execute_command")
+            params = entities.get("parameters", {})
+            steps.append(PlanStep(
+                step_id=f"step_{uuid.uuid4().hex[:6]}",
+                tool_name="learn_pattern_correction",
+                parameters={"prompt_pattern": pat, "correct_intent": c_intent, "target_tool": t_tool, "parameters": params},
+                description=f"Step 1/1 (Self-Learning): Save pattern rule '{pat}' -> {c_intent} ({t_tool}) to long-term memory",
+                risk_level=RiskLevel.LOW
+            ))
+
+        elif intent == "LIST_LEARNED_RULES":
+            steps.append(PlanStep(
+                step_id=f"step_{uuid.uuid4().hex[:6]}",
+                tool_name="list_learned_rules",
+                parameters={},
+                description="Step 1/1 (Self-Learning): Retrieve all learned rule corrections from long-term memory",
+                risk_level=RiskLevel.LOW
+            ))
+
+        elif intent == "FORGET_LEARNED_RULE":
+            rule_id = entities.get("rule_id", "")
+            steps.append(PlanStep(
+                step_id=f"step_{uuid.uuid4().hex[:6]}",
+                tool_name="forget_learned_rule",
+                parameters={"rule_id": rule_id},
+                description=f"Step 1/1 (Self-Learning): Delete learned rule '{rule_id}' from long-term memory",
+                risk_level=RiskLevel.LOW
+            ))
+
+        elif entities.get("target_tool"):
+            t_tool = entities.get("target_tool")
+            tool_params = {k: v for k, v in entities.items() if k not in ["target_tool", "learned_rule_id"]}
+            steps.append(PlanStep(
+                step_id=f"step_{uuid.uuid4().hex[:6]}",
+                tool_name=t_tool,
+                parameters=tool_params,
+                description=f"Step 1/1 (Learned Rule Execution): Execute learned tool '{t_tool}'",
+                risk_level=RiskLevel.MEDIUM
+            ))
+
         else:
             steps.append(PlanStep(
                 step_id=f"step_{uuid.uuid4().hex[:6]}",
