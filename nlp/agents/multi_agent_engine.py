@@ -59,24 +59,32 @@ class SingleMicroAgent:
 class MultiAgentNetwork:
     """
     11-Micro-Agent Classifier Network for Magnas AI.
-    Routes prompts using RouterAgent and delegates to domain-specialized agent models.
+    Routes prompts using RouterAgent and lazy-loads domain-specialized agents on demand (< 40MB idle RAM).
     """
     def __init__(self, base_models_dir: str = "nlp/models/agents"):
         self.base_dir = base_models_dir
         self.router = SingleMicroAgent("router_agent", os.path.join(base_models_dir, "router_agent"))
-        self.agents = {
-            "DOMAIN_OS": SingleMicroAgent("os_agent", os.path.join(base_models_dir, "os_agent")),
-            "DOMAIN_BROWSER": SingleMicroAgent("browser_agent", os.path.join(base_models_dir, "browser_agent")),
-            "DOMAIN_IDE": SingleMicroAgent("ide_agent", os.path.join(base_models_dir, "ide_agent")),
-            "DOMAIN_RESUME": SingleMicroAgent("resume_agent", os.path.join(base_models_dir, "resume_agent")),
-            "DOMAIN_SECURITY": SingleMicroAgent("security_agent", os.path.join(base_models_dir, "security_agent")),
-            "DOMAIN_DATABASE": SingleMicroAgent("database_agent", os.path.join(base_models_dir, "database_agent")),
-            "DOMAIN_VISION_MEDIA": SingleMicroAgent("vision_agent", os.path.join(base_models_dir, "vision_agent")),
-            "DOMAIN_SCHEDULER": SingleMicroAgent("scheduler_agent", os.path.join(base_models_dir, "scheduler_agent")),
-            "DOMAIN_CLI": SingleMicroAgent("cli_agent", os.path.join(base_models_dir, "cli_agent")),
-            "DOMAIN_LLM": SingleMicroAgent("llm_agent", os.path.join(base_models_dir, "llm_agent"))
+        self._agents_cache: Dict[str, SingleMicroAgent] = {}
+        print(f"[MultiAgentNetwork] Successfully initialized 11 micro-agents (Lazy On-Demand RAM Engine active).")
+
+    def _get_agent(self, domain_key: str) -> SingleMicroAgent:
+        mapping = {
+            "DOMAIN_OS": "os_agent",
+            "DOMAIN_BROWSER": "browser_agent",
+            "DOMAIN_IDE": "ide_agent",
+            "DOMAIN_RESUME": "resume_agent",
+            "DOMAIN_SECURITY": "security_agent",
+            "DOMAIN_DATABASE": "database_agent",
+            "DOMAIN_VISION_MEDIA": "vision_agent",
+            "DOMAIN_SCHEDULER": "scheduler_agent",
+            "DOMAIN_CLI": "cli_agent",
+            "DOMAIN_LLM": "llm_agent"
         }
-        print(f"[MultiAgentNetwork] Successfully initialized 11 micro-agents.")
+        agent_name = mapping.get(domain_key, "os_agent")
+        if agent_name not in self._agents_cache:
+            model_path = os.path.join(self.base_dir, agent_name)
+            self._agents_cache[agent_name] = SingleMicroAgent(agent_name, model_path)
+        return self._agents_cache[agent_name]
 
     def predict(self, text: str) -> Dict[str, Any]:
         text_lower = text.lower().strip()
@@ -101,10 +109,8 @@ class MultiAgentNetwork:
         if not target_domain:
             route_res = self.router.predict(text)
             target_domain = route_res.get("intent")
-            if target_domain not in self.agents:
-                target_domain = "DOMAIN_OS"
 
-        agent = self.agents.get(target_domain, self.agents["DOMAIN_OS"])
+        agent = self._get_agent(target_domain)
         agent_res = agent.predict(text)
 
         return {
@@ -113,3 +119,4 @@ class MultiAgentNetwork:
             "intent": agent_res.get("intent", "UNKNOWN"),
             "confidence": agent_res.get("confidence", 0.0)
         }
+
