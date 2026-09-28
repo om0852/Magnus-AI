@@ -6,7 +6,10 @@ __pycache__/
 venv/
 env/
 *.db
+*.db-shm
+*.db-wal
 screenshots/
+
 scratch/
 nlp/models/agents/*/model.pth
 nlp/models/magnas-nlp/model.pth
