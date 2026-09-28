@@ -2,6 +2,8 @@ from tools.registry import registry
 import tools.conversational
 import tools.persistent_memory
 import tools.antigravity_sidecar
+import tools.cron_scheduler
+import tools.ultralight_llm
 import tools.applications
 import tools.browser
 import tools.filesystem
@@ -16,5 +18,6 @@ import tools.cli_shell
 import tools.llm_bridge
 
 __all__ = ["registry"]
+
 
 

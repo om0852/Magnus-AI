@@ -88,7 +88,21 @@ class Database:
                     updated_at REAL
                 )
             """)
+
+            # Cron jobs table
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS cron_jobs (
+                    job_id TEXT PRIMARY KEY,
+                    name TEXT NOT NULL,
+                    prompt TEXT NOT NULL,
+                    interval_minutes INTEGER DEFAULT 60,
+                    status TEXT DEFAULT 'ACTIVE',
+                    last_run REAL,
+                    next_run REAL
+                )
+            """)
             conn.commit()
+
 
 
     def save_task(self, task: Task):
@@ -266,6 +280,31 @@ class Database:
             cursor.execute("SELECT * FROM memory_store WHERE key LIKE ? OR value LIKE ? OR category LIKE ? ORDER BY updated_at DESC", (pattern, pattern, pattern))
             rows = cursor.fetchall()
             return [{"key": r["key"], "value": r["value"], "category": r["category"], "updated_at": r["updated_at"]} for r in rows]
+
+    def save_cron_job(self, job_id: str, name: str, prompt: str, interval_minutes: int = 60, status: str = "ACTIVE"):
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            now = time.time()
+            next_run = now + (interval_minutes * 60)
+            cursor.execute("""
+                INSERT OR REPLACE INTO cron_jobs (job_id, name, prompt, interval_minutes, status, last_run, next_run)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            """, (job_id, name, prompt, interval_minutes, status, now, next_run))
+            conn.commit()
+
+    def list_cron_jobs(self) -> List[Dict[str, Any]]:
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM cron_jobs ORDER BY next_run ASC")
+            rows = cursor.fetchall()
+            return [{"job_id": r["job_id"], "name": r["name"], "prompt": r["prompt"], "interval_minutes": r["interval_minutes"], "status": r["status"], "last_run": r["last_run"], "next_run": r["next_run"]} for r in rows]
+
+    def delete_cron_job(self, job_id: str):
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("DELETE FROM cron_jobs WHERE job_id = ?", (job_id,))
+            conn.commit()
+
 
     def _row_to_task(self, row) -> Task:
 
