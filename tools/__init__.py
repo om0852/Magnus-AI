@@ -4,6 +4,8 @@ import tools.persistent_memory
 import tools.antigravity_sidecar
 import tools.cron_scheduler
 import tools.ultralight_llm
+import tools.code_fixer
+import tools.mesh_network
 import tools.applications
 import tools.browser
 import tools.filesystem
@@ -18,6 +20,7 @@ import tools.cli_shell
 import tools.llm_bridge
 
 __all__ = ["registry"]
+
 
 
 
