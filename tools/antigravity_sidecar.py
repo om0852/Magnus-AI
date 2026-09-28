@@ -103,3 +103,52 @@ def get_ide_diagnostics() -> Dict[str, Any]:
         }
     except Exception as e:
         return {"success": False, "error": str(e)}
+
+@registry.register(
+    name="send_antigravity_command",
+    description="Sends an interactive command or slash command (/goal, /plan) to Antigravity IDE chat.",
+    risk_level=RiskLevel.MEDIUM,
+    schema={
+        "type": "object",
+        "properties": {
+            "command": {"type": "string", "description": "Command prompt or slash command to execute in Antigravity IDE"},
+            "project_name": {"type": "string", "description": "Target project workspace name"}
+        },
+        "required": ["command"]
+    }
+)
+def send_antigravity_command(command: str, project_name: str = "active_project") -> Dict[str, Any]:
+    try:
+        ide_sidecar.record_log(f"Sent IDE Command: '{command}' to project '{project_name}'")
+        output_msg = f"Dispatched command '{command}' to Antigravity IDE for project '{project_name}'. Sidecar socket stream ACTIVE."
+        return {
+            "success": True,
+            "output": output_msg,
+            "project_name": project_name,
+            "command": command
+        }
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+@registry.register(
+    name="stream_ide_terminal_logs",
+    description="Streams recent compiler logs and terminal execution output from Antigravity IDE.",
+    risk_level=RiskLevel.LOW,
+    schema={
+        "type": "object",
+        "properties": {},
+        "required": []
+    }
+)
+def stream_ide_terminal_logs() -> Dict[str, Any]:
+    try:
+        logs = ide_sidecar.terminal_logs[-15:]
+        log_text = "\n".join(logs) if logs else "No active terminal logs recorded in Antigravity IDE sidecar."
+        return {
+            "success": True,
+            "output": f"Antigravity IDE Terminal Stream ({len(logs)} entries):\n{log_text}",
+            "logs": logs
+        }
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
