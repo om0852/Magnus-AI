@@ -82,10 +82,20 @@ class InferenceEngine:
     def parse(self, text: str) -> Dict[str, Any]:
         text_clean = text.strip()
 
+        # Step 0: Check Self-Learned Rule Overrides
+        try:
+            from core.memory.self_learning import self_learning_engine
+            learned_match = self_learning_engine.match_prompt(text_clean)
+            if learned_match:
+                return learned_match
+        except Exception:
+            pass
+
         # Step 1: Rule-based & Compound phrase matching
         rule_result = self._rule_parse(text_clean)
         if rule_result["confidence"] >= 0.85:
             return rule_result
+
 
         # Step 2: 11-Micro-Agent Network Inference
         if self.multi_agent_net:
@@ -198,7 +208,9 @@ class InferenceEngine:
             sub_tasks = []
             for part in parts:
                 sub_res = self._single_rule_parse(part)
-                if sub_res["intent"] != "UNKNOWN":
+                if sub_res.get("intent") == "COMPOUND_TASK" and "sub_tasks" in sub_res.get("entities", {}):
+                    sub_tasks.extend(sub_res["entities"]["sub_tasks"])
+                elif sub_res.get("intent") != "UNKNOWN":
                     sub_tasks.append(sub_res)
             
             if len(sub_tasks) > 1:
@@ -208,11 +220,12 @@ class InferenceEngine:
                     "entities": {"sub_tasks": sub_tasks}
                 }
 
+
         return self._single_rule_parse(lower)
 
     def _single_rule_parse(self, lower: str) -> Dict[str, Any]:
-        # 4. Search Web / Search Site (Check before SEARCH_FILES to avoid false positives)
-        if lower.startswith("search web") or "for " in lower or any(site in lower for site in ["youtube", "google", "bing", "github", "wikipedia"]):
+        # 4. Search Web / Search Site
+        if lower.startswith("search web") or "for " in lower or any(w in lower for w in ["youtube", "google", "bing", "github", "wikipedia", "scrapper", "scraper", "apify", "low price", "cheapest", "best", "price"]):
             m_search_site = re.search(r"^(?:search\s+web\s+for|search)\s+([a-zA-Z0-9]+)\s+for\s+(.+)$", lower)
             if m_search_site:
                 site = m_search_site.group(1).strip()
@@ -223,7 +236,7 @@ class InferenceEngine:
                     "entities": {"query": query, "site": site}
                 }
             
-            m_search = re.search(r"^search\s+(?:web\s+for\s+|for\s+)?(.+?)(?:\s+on\s+([a-zA-Z0-9]+))?$", lower)
+            m_search = re.search(r"^(?:search|find|locate)\s+(?:web\s+for\s+|for\s+)?(.+?)(?:\s+on\s+([a-zA-Z0-9]+))?$", lower)
             if m_search:
                 query = m_search.group(1).strip()
                 site = m_search.group(2).strip() if m_search.group(2) else "google"
@@ -233,15 +246,21 @@ class InferenceEngine:
                     "entities": {"query": query, "site": site}
                 }
 
-        # Search files / find file
+        # Search files / find file (only for explicit local file queries)
         m_find = re.search(r"^(?:find|search|locate)\s+(?:my\s+)?(?:latest\s+)?(?:file\s+)?([a-zA-Z0-9_\-\.\s]+)$", lower)
         if m_find and not lower.startswith("open"):
             kw = m_find.group(1).strip()
-            if kw not in ["chrome", "firefox", "discord", "spotify", "vscode", "file explorer"]:
+            if not any(w in kw for w in ["best", "scrapper", "scraper", "apify", "low price", "cheapest", "price", "buy", "online", "web"]) and kw not in ["chrome", "firefox", "discord", "spotify", "vscode", "file explorer"]:
                 return {
                     "intent": "SEARCH_FILES",
                     "confidence": 0.95,
                     "entities": {"query": kw}
+                }
+            else:
+                return {
+                    "intent": "SEARCH_WEB",
+                    "confidence": 0.95,
+                    "entities": {"query": kw, "site": "google"}
                 }
 
         # Resume Design Intent
@@ -253,16 +272,32 @@ class InferenceEngine:
                 "entities": {"name": "Om Salunke", "title": extracted_title}
             }
 
-        # 1. Open Application
+        # 1. Open Application / Navigation Split
         m_app = re.search(r"^(?:open|launch|start|run|bring up|switch to)\s+([a-zA-Z0-9_\-\.\s]+)$", lower)
         if m_app:
-            app_name = m_app.group(1).strip()
-            if not app_name.startswith("http") and app_name not in ["file", "folder", "directory"]:
+            app_raw = m_app.group(1).strip()
+            if " go to " in app_raw or " navigate to " in app_raw:
+                parts = re.split(r"\s+(?:go\s+to|navigate\s+to)\s+", app_raw, maxsplit=1)
+                app_name = parts[0].strip()
+                target_site = parts[1].strip() if len(parts) > 1 else ""
+                return {
+                    "intent": "COMPOUND_TASK",
+                    "confidence": 0.99,
+                    "entities": {
+                        "sub_tasks": [
+                            {"intent": "OPEN_APP", "confidence": 0.98, "entities": {"application": app_name}},
+                            {"intent": "SEARCH_WEB", "confidence": 0.95, "entities": {"query": target_site, "site": "google"}}
+                        ]
+                    }
+                }
+            
+            if not app_raw.startswith("http") and app_raw not in ["file", "folder", "directory"]:
                 return {
                     "intent": "OPEN_APP",
                     "confidence": 0.98,
-                    "entities": {"application": app_name}
+                    "entities": {"application": app_raw}
                 }
+
 
         # 2. Close Application
         m_close = re.search(r"^(?:close|exit|terminate|kill|shut down)\s+([a-zA-Z0-9_\-\.\s]+)$", lower)

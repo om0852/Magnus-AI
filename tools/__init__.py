@@ -6,7 +6,9 @@ import tools.cron_scheduler
 import tools.ultralight_llm
 import tools.code_fixer
 import tools.mesh_network
+import tools.self_learning
 import tools.applications
+
 import tools.browser
 import tools.filesystem
 import tools.keyboard_mouse

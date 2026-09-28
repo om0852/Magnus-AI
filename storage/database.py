@@ -107,7 +107,20 @@ class Database:
                     next_run REAL
                 )
             """)
+
+            # Self-Learned Rules table
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS learned_rules (
+                    rule_id TEXT PRIMARY KEY,
+                    pattern TEXT NOT NULL,
+                    target_intent TEXT NOT NULL,
+                    target_tool TEXT NOT NULL,
+                    parameters TEXT,
+                    created_at REAL
+                )
+            """)
             conn.commit()
+
 
 
 
@@ -310,6 +323,36 @@ class Database:
             cursor = conn.cursor()
             cursor.execute("DELETE FROM cron_jobs WHERE job_id = ?", (job_id,))
             conn.commit()
+
+    def save_learned_rule(self, rule_id: str, pattern: str, target_intent: str, target_tool: str, parameters: dict):
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                INSERT OR REPLACE INTO learned_rules (rule_id, pattern, target_intent, target_tool, parameters, created_at)
+                VALUES (?, ?, ?, ?, ?, ?)
+            """, (rule_id, pattern.lower().strip(), target_intent, target_tool, json.dumps(parameters), time.time()))
+            conn.commit()
+
+    def list_learned_rules(self) -> List[Dict[str, Any]]:
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM learned_rules ORDER BY created_at DESC")
+            rows = cursor.fetchall()
+            return [{
+                "rule_id": r["rule_id"],
+                "pattern": r["pattern"],
+                "target_intent": r["target_intent"],
+                "target_tool": r["target_tool"],
+                "parameters": json.loads(r["parameters"]) if r["parameters"] else {},
+                "created_at": r["created_at"]
+            } for r in rows]
+
+    def delete_learned_rule(self, rule_id: str):
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("DELETE FROM learned_rules WHERE rule_id = ?", (rule_id,))
+            conn.commit()
+
 
 
     def _row_to_task(self, row) -> Task:

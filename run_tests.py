@@ -60,11 +60,20 @@ def run_all_tests():
     prog_steps = planner.plan_task(task_prog)
     assert len(prog_steps) == 1 and prog_steps[0].tool_name == "get_task_progress"
 
+    parsed_apify = nlp.parse("open firefox go to apify console and find best instagram scrapper in low price")
+    assert parsed_apify["intent"] == "COMPOUND_TASK", f"Expected COMPOUND_TASK, got {parsed_apify['intent']}"
+    sub_t = parsed_apify["entities"]["sub_tasks"]
+    assert sub_t[0]["entities"]["application"] == "firefox"
+    assert sub_t[1]["entities"]["query"] == "apify console"
+    assert "instagram" in sub_t[2]["entities"]["query"].lower()
+
+
     task_ag = Task(task_id="t_ag", raw_prompt="develop a react task app using antigravity ide", intent=parsed_ag["intent"], entities=parsed_ag["entities"])
     steps = planner.plan_task(task_ag)
     assert len(steps) == 4, f"Expected 4 plan steps, got {len(steps)}"
     assert steps[2].tool_name == "develop_project_in_antigravity"
-    print("  [OK] Conversational Voice Chat, Progress Query & 4-Step Planner tests passed.")
+    print("  [OK] Conversational Voice Chat, Compound App+Web & 4-Step Planner tests passed.")
+
 
 
     # 6. Test 11-Micro-Agent Classifier Network
