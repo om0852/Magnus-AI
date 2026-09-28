@@ -78,7 +78,18 @@ class Database:
                     timestamp REAL
                 )
             """)
+
+            # Persistent memory table
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS memory_store (
+                    key TEXT PRIMARY KEY,
+                    value TEXT NOT NULL,
+                    category TEXT DEFAULT 'general',
+                    updated_at REAL
+                )
+            """)
             conn.commit()
+
 
     def save_task(self, task: Task):
         with self._get_connection() as conn:
@@ -230,7 +241,34 @@ class Database:
                 for r in rows
             ]
 
+    def save_memory(self, key: str, value: str, category: str = "general"):
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                INSERT OR REPLACE INTO memory_store (key, value, category, updated_at)
+                VALUES (?, ?, ?, ?)
+            """, (key, value, category, time.time()))
+            conn.commit()
+
+    def get_memory(self, key: str) -> Optional[Dict[str, Any]]:
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM memory_store WHERE key = ?", (key,))
+            row = cursor.fetchone()
+            if not row:
+                return None
+            return {"key": row["key"], "value": row["value"], "category": row["category"], "updated_at": row["updated_at"]}
+
+    def search_memory(self, query: str) -> List[Dict[str, Any]]:
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            pattern = f"%{query}%"
+            cursor.execute("SELECT * FROM memory_store WHERE key LIKE ? OR value LIKE ? OR category LIKE ? ORDER BY updated_at DESC", (pattern, pattern, pattern))
+            rows = cursor.fetchall()
+            return [{"key": r["key"], "value": r["value"], "category": r["category"], "updated_at": r["updated_at"]} for r in rows]
+
     def _row_to_task(self, row) -> Task:
+
         raw_steps = json.loads(row["steps"]) if row["steps"] else []
         steps = [
             PlanStep(

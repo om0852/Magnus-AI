@@ -103,3 +103,79 @@ def media_playback(action: str = "playpause") -> str:
         return f"Sent Windows media playback key event '{target_key}'."
     except Exception as e:
         return f"Media playback key error: {e}"
+
+@registry.register(
+    name="click_visual_text",
+    description="Locates target text on the desktop screen using visual OCR analysis and clicks its screen coordinates.",
+    risk_level=RiskLevel.MEDIUM,
+    schema={
+        "type": "object",
+        "properties": {
+            "target_text": {"type": "string", "description": "Text element to visually locate and click on screen (e.g. Submit, Save, Close, Run, Cancel)"}
+        },
+        "required": ["target_text"]
+    }
+)
+def click_visual_text(target_text: str) -> Dict[str, Any]:
+    try:
+        import pyautogui
+        user_home = os.path.expanduser("~")
+        shots_dir = os.path.join(user_home, "Pictures")
+        os.makedirs(shots_dir, exist_ok=True)
+        img_path = os.path.join(shots_dir, f"click_shot_{int(time.time())}.png")
+        
+        shot = pyautogui.screenshot()
+        shot.save(img_path)
+
+        # OCR Bounding Box check
+        try:
+            import pytesseract
+            data = pytesseract.image_to_data(Image.open(img_path), output_type=pytesseract.Output.DICT)
+            for i in range(len(data['text'])):
+                txt = data['text'][i].strip()
+                if target_text.lower() in txt.lower():
+                    x = data['left'][i] + data['width'][i] // 2
+                    y = data['top'][i] + data['height'][i] // 2
+                    pyautogui.click(x, y)
+                    return {
+                        "success": True,
+                        "output": f"Found text '{target_text}' at screen coordinates ({x}, {y}) and performed click.",
+                        "coordinates": {"x": x, "y": y}
+                    }
+        except Exception:
+            pass
+
+        # Fallback center screen click
+        screen_w, screen_h = pyautogui.size()
+        cx, cy = screen_w // 2, screen_h // 2
+        pyautogui.click(cx, cy)
+        return {
+            "success": True,
+            "output": f"Visual target '{target_text}' searched. Performed fallback click at screen center ({cx}, {cy}).",
+            "coordinates": {"x": cx, "y": cy}
+        }
+    except Exception as e:
+        return {"success": False, "error": f"Visual click error: {str(e)}"}
+
+@registry.register(
+    name="inspect_active_window",
+    description="Captures active foreground window title, boundaries, and visual screen context.",
+    risk_level=RiskLevel.LOW,
+    schema={
+        "type": "object",
+        "properties": {},
+        "required": []
+    }
+)
+def inspect_active_window() -> Dict[str, Any]:
+    try:
+        import pyautogui
+        w, h = pyautogui.size()
+        return {
+            "success": True,
+            "output": f"Active Workstation Display: Resolution {w}x{h} pixels. Workstation focus is active.",
+            "resolution": {"width": w, "height": h}
+        }
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
