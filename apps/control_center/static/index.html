@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Magnas — Next-Gen AI Voice & Autonomous Control Center</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="logo-wrapper">
+          <div class="logo-icon">M</div>
+          <div class="logo-pulse"></div>
+        </div>
+        <div class="brand-text">
+          <h2>MAGNAS <span class="ai-tag">AI</span></h2>
+          <span class="badge badge-glow">v0.3.0 AUTONOMOUS</span>
+        </div>
+      </div>
+
+      <div class="voice-status-box" id="voice-status-card">
+        <div class="voice-header">
+          <span class="status-indicator-dot" id="wake-dot"></span>
+          <span class="voice-title" id="wake-title">Wake Word Mode</span>
+        </div>
+        <div class="wake-phrase">"Hey Magnas"</div>
+        <div class="voice-visualizer" id="audio-wave">
+          <div class="bar"></div>
+          <div class="bar"></div>
+          <div class="bar"></div>
+          <div class="bar"></div>
+          <div class="bar"></div>
+        </div>
+        <button class="toggle-btn active" id="wake-word-toggle-btn">
+          <span class="toggle-icon">🎤</span> <span id="wake-toggle-text">Wake Word: ON</span>
+        </button>
+      </div>
+
+      <nav class="nav-menu">
+        <button class="nav-item active" data-tab="dashboard">
+          <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/></svg>
+          Command Center
+        </button>
+        <button class="nav-item" data-tab="approvals">
+          <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+          Approvals Gateway
+          <span class="count-badge" id="approvals-badge">0</span>
+        </button>
+        <button class="nav-item" data-tab="voice-commands">
+          <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"/></svg>
+          Voice Library
+        </button>
+        <button class="nav-item" data-tab="history">
+          <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          Execution History
+        </button>
+        <button class="nav-item" data-tab="audit-logs">
+          <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+          Activity & Resource Audit
+        </button>
+        <button class="nav-item" data-tab="tools">
+          <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+          Tools Ecosystem
+        </button>
+      </nav>
+
+      <div class="sidebar-controls">
+        <button class="small-toggle-btn" id="tts-toggle-btn">
+          🔊 Voice Output: <span id="tts-status">ON</span>
+        </button>
+      </div>
+
+      <div class="status-footer">
+        <div class="ws-status" id="ws-indicator">
+          <span class="status-dot"></span>
+          <span id="ws-text">Connecting...</span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      <!-- Top Command Header -->
+      <header class="top-header">
+        <div class="command-box-wrapper">
+          <div class="command-input-container" id="cmd-container">
+            <button class="mic-btn" id="mic-btn" title="Click to speak (or say 'Hey Magnas')">
+              <svg class="mic-icon" width="22" height="22" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"/>
+              </svg>
+            </button>
+            <input type="text" id="cmd-input" placeholder="Say 'Hey Magnas...' or type a command (e.g. 'design my java resume', 'run daily automation', 'open chrome')..." />
+            <button id="cmd-send-btn" class="exec-btn">Execute Task</button>
+          </div>
+          <div class="speech-hint" id="speech-hint">
+            <span class="pulse-ring"></span> <span id="speech-hint-text">Microphone listening for "Hey Magnas..."</span>
+          </div>
+        </div>
+
+        <!-- Action Quick Pills -->
+        <div class="quick-pills">
+          <button class="pill pill-highlight" onclick="quickRun('develop a full stack web app using antigravity ide')">🚀 Build Project via Antigravity IDE</button>
+          <button class="pill pill-highlight" onclick="quickRun('design my resume for full stack java developer role')">📄 Build My Resume (Full Workflow)</button>
+          <button class="pill pill-highlight" onclick="quickRun('run daily automation and system health report')">🤖 Daily Automation Task</button>
+          <button class="pill" onclick="quickRun('open chrome')">🌐 Open Chrome</button>
+          <button class="pill" onclick="quickRun('search youtube for lofi study music')">🎵 Play YouTube Music</button>
+          <button class="pill" onclick="quickRun('take a screenshot')">📷 Screenshot</button>
+          <button class="pill" onclick="quickRun('increase volume by 20')">🔊 Volume Up</button>
+        </div>
+      </header>
+
+      <!-- Dashboard View -->
+      <section class="tab-view active" id="view-dashboard">
+        <div class="metrics-grid">
+          <div class="card metric-card">
+            <span class="metric-title">System Status</span>
+            <span class="metric-value text-green" id="stat-system">ONLINE</span>
+            <span class="metric-sub">Multi-Step Planner Active</span>
+          </div>
+          <div class="card metric-card">
+            <span class="metric-title">Pending Approvals</span>
+            <span class="metric-value text-amber" id="stat-approvals">0</span>
+            <span class="metric-sub">Human-in-the-loop Gate</span>
+          </div>
+          <div class="card metric-card">
+            <span class="metric-title">Active Tasks</span>
+            <span class="metric-value text-blue" id="stat-running">0</span>
+            <span class="metric-sub">Autonomous Execution Engine</span>
+          </div>
+          <div class="card metric-card">
+            <span class="metric-title">Registered Tools</span>
+            <span class="metric-value text-purple" id="stat-tools">0</span>
+            <span class="metric-sub">System Integrations</span>
+          </div>
+        </div>
+
+        <!-- Lifecycle Pipeline Stepper Banner -->
+        <div class="pipeline-stepper-card card">
+          <div class="stepper-header">
+            <span class="stepper-title">⚙️ AGENT TASK LIFECYCLE PIPELINE</span>
+            <span class="stepper-sub">Scan ➔ Gather ➔ Plan ➔ Execute ➔ Verify</span>
+          </div>
+          <div class="pipeline-steps">
+            <div class="step-pill" id="phase-UNDERSTOOD"><span class="step-num">1</span> INTENT UNDERSTOOD</div>
+            <div class="step-arrow">➔</div>
+            <div class="step-pill" id="phase-PLANNED"><span class="step-num">2</span> MULTI-STEP PLAN</div>
+            <div class="step-arrow">➔</div>
+            <div class="step-pill" id="phase-EXECUTING"><span class="step-num">3</span> STEP EXECUTION</div>
+            <div class="step-arrow">➔</div>
+            <div class="step-pill" id="phase-VERIFYING"><span class="step-num">4</span> VERIFICATION</div>
+            <div class="step-arrow">➔</div>
+            <div class="step-pill" id="phase-COMPLETED"><span class="step-num">5</span> DONE</div>
+          </div>
+        </div>
+
+        <!-- Pending Approvals Banner -->
+        <div class="approval-alert-container" id="approval-alert-banner" style="display: none;">
+          <div class="alert-box">
+            <div class="alert-icon">⚠️</div>
+            <div class="alert-content">
+              <h3>Action Requires Human Approval</h3>
+              <p id="alert-text">Magnas policy engine caught a high-risk system command.</p>
+            </div>
+            <button class="btn btn-warning" onclick="switchTab('approvals')">Review Approval Tickets</button>
+          </div>
+        </div>
+
+        <div class="grid-2col">
+          <!-- Live Task Stream -->
+          <div class="card stream-card">
+            <div class="card-header">
+              <h3>⚡ Live Task Execution & Planning Stream</h3>
+              <span class="live-tag">REALTIME STREAM</span>
+            </div>
+            <div class="task-stream" id="task-stream">
+              <div class="empty-state">No commands executed yet. Speak or type a command above.</div>
+            </div>
+          </div>
+
+          <!-- Realtime Event Log -->
+          <div class="card event-card">
+            <div class="card-header">
+              <h3>📡 Agent Lifecycle Events</h3>
+              <span class="live-tag magenta">EVENT BUS</span>
+            </div>
+            <div class="event-log" id="event-log">
+              <!-- Dynamic Events -->
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Approvals Tab View -->
+      <section class="tab-view" id="view-approvals">
+        <div class="section-title">
+          <h2>Human-in-the-Loop Approval Gateway</h2>
+          <p>Magnas security policy prevents high-risk computer operations without direct authorization.</p>
+        </div>
+        <div class="tickets-grid" id="tickets-container">
+          <div class="empty-state">No pending approval requests.</div>
+        </div>
+      </section>
+
+      <!-- Voice Commands Library View -->
+      <section class="tab-view" id="view-voice-commands">
+        <div class="section-title">
+          <h2>🎙️ "Hey Magnas" Voice Command Cheat Sheet</h2>
+          <p>Just say "Hey Magnas" followed by any natural language command below or custom request!</p>
+        </div>
+        <div class="voice-cards-grid">
+          <div class="card voice-cmd-card">
+            <div class="cmd-category">📄 Resume & Profile Workflows</div>
+            <ul class="cmd-list">
+              <li><code>"Hey Magnas, design my resume for Java developer"</code></li>
+              <li><code>"Hey Magnas, create a resume for SDE role"</code></li>
+              <li><code>"Hey Magnas, build resume for AI Engineer"</code></li>
+            </ul>
+          </div>
+          <div class="card voice-cmd-card">
+            <div class="cmd-category">🌐 Web & Search</div>
+            <ul class="cmd-list">
+              <li><code>"Hey Magnas, open chrome"</code></li>
+              <li><code>"Hey Magnas, search YouTube for synthwave music"</code></li>
+              <li><code>"Hey Magnas, open google.com"</code></li>
+            </ul>
+          </div>
+          <div class="card voice-cmd-card">
+            <div class="cmd-category">💻 Applications & OS</div>
+            <ul class="cmd-list">
+              <li><code>"Hey Magnas, open notepad"</code></li>
+              <li><code>"Hey Magnas, open calculator"</code></li>
+              <li><code>"Hey Magnas, take a screenshot"</code></li>
+            </ul>
+          </div>
+          <div class="card voice-cmd-card">
+            <div class="cmd-category">🤖 Automation & System</div>
+            <ul class="cmd-list">
+              <li><code>"Hey Magnas, run daily automation"</code></li>
+              <li><code>"Hey Magnas, increase volume by 20"</code></li>
+              <li><code>"Hey Magnas, mute sound"</code></li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <!-- Task History View -->
+      <section class="tab-view" id="view-history">
+        <div class="section-title">
+          <h2>Execution Audit Log</h2>
+        </div>
+        <div class="card">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Task ID</th>
+                <th>Prompt</th>
+                <th>Intent</th>
+                <th>Risk Level</th>
+                <th>Status</th>
+                <th>Time</th>
+              </tr>
+            </thead>
+            <tbody id="history-table-body">
+              <!-- Rows -->
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Activity & Resource Security Audit View -->
+      <section class="tab-view" id="view-audit-logs">
+        <div class="section-title">
+          <h2>🛡️ Security, Activity & Resource Audit Trail</h2>
+          <p>Complete audit ledger tracking system tool calls, accessed resources, services, permissions used, and risk levels.</p>
+        </div>
+        <div class="card">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Timestamp</th>
+                <th>Action Tool</th>
+                <th>Target Resource / Service</th>
+                <th>Permission Granted</th>
+                <th>Risk Level</th>
+                <th>Status</th>
+                <th>Task ID</th>
+              </tr>
+            </thead>
+            <tbody id="audit-table-body">
+              <!-- Rows -->
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Tools View -->
+      <section class="tab-view" id="view-tools">
+        <div class="section-title">
+          <h2>Registered Tool Ecosystem</h2>
+        </div>
+        <div class="tools-grid" id="tools-container">
+          <!-- Tool cards -->
+        </div>
+      </section>
+
+    </main>
+  </div>
+  <script src="app.js"></script>
+</body>
+</html>

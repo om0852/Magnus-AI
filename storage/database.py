@@ -1,0 +1,275 @@
+import sqlite3
+import json
+import os
+import time
+from typing import List, Optional, Dict, Any
+from storage.models import Task, ApprovalTicket, SystemEvent, AuditLog, TaskStatus, TicketStatus, RiskLevel, PlanStep
+
+class Database:
+    def __init__(self, db_path: str = "magnas.db"):
+        self.db_path = db_path
+        self._init_db()
+
+    def _get_connection(self):
+        conn = sqlite3.connect(self.db_path)
+        conn.row_factory = sqlite3.Row
+        return conn
+
+    def _init_db(self):
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            # Tasks table
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS tasks (
+                    task_id TEXT PRIMARY KEY,
+                    raw_prompt TEXT NOT NULL,
+                    intent TEXT,
+                    entities TEXT,
+                    confidence REAL,
+                    status TEXT NOT NULL,
+                    steps TEXT,
+                    highest_risk TEXT,
+                    approval_ticket_id TEXT,
+                    error_message TEXT,
+                    output TEXT,
+                    created_at REAL,
+                    updated_at REAL
+                )
+            """)
+
+            # Approval tickets table
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS approval_tickets (
+                    ticket_id TEXT PRIMARY KEY,
+                    task_id TEXT NOT NULL,
+                    action_type TEXT NOT NULL,
+                    target_summary TEXT NOT NULL,
+                    risk_level TEXT NOT NULL,
+                    reason TEXT NOT NULL,
+                    status TEXT NOT NULL,
+                    details TEXT,
+                    created_at REAL,
+                    expires_at REAL
+                )
+            """)
+
+            # Audit logs table
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS audit_logs (
+                    log_id TEXT PRIMARY KEY,
+                    task_id TEXT,
+                    action TEXT NOT NULL,
+                    resource_service TEXT NOT NULL,
+                    permission_used TEXT NOT NULL,
+                    risk_level TEXT NOT NULL,
+                    status TEXT NOT NULL,
+                    details TEXT,
+                    timestamp REAL
+                )
+            """)
+
+            # System events table
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS events (
+                    event_id TEXT PRIMARY KEY,
+                    event_type TEXT NOT NULL,
+                    task_id TEXT,
+                    payload TEXT,
+                    timestamp REAL
+                )
+            """)
+            conn.commit()
+
+    def save_task(self, task: Task):
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                INSERT OR REPLACE INTO tasks (
+                    task_id, raw_prompt, intent, entities, confidence, status, steps,
+                    highest_risk, approval_ticket_id, error_message, output, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                task.task_id,
+                task.raw_prompt,
+                task.intent,
+                json.dumps(task.entities),
+                task.confidence,
+                task.status.value if isinstance(task.status, TaskStatus) else task.status,
+                json.dumps([s.to_dict() for s in task.steps]),
+                task.highest_risk.value if isinstance(task.highest_risk, RiskLevel) else task.highest_risk,
+                task.approval_ticket_id,
+                task.error_message,
+                json.dumps(task.output) if task.output else None,
+                task.created_at,
+                task.updated_at
+            ))
+            conn.commit()
+
+    def get_task(self, task_id: str) -> Optional[Task]:
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM tasks WHERE task_id = ?", (task_id,))
+            row = cursor.fetchone()
+            if not row:
+                return None
+            return self._row_to_task(row)
+
+    def list_tasks(self, limit: int = 50) -> List[Task]:
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM tasks ORDER BY created_at DESC LIMIT ?", (limit,))
+            rows = cursor.fetchall()
+            return [self._row_to_task(r) for r in rows]
+
+    def save_approval_ticket(self, ticket: ApprovalTicket):
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                INSERT OR REPLACE INTO approval_tickets (
+                    ticket_id, task_id, action_type, target_summary, risk_level,
+                    reason, status, details, created_at, expires_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                ticket.ticket_id,
+                ticket.task_id,
+                ticket.action_type,
+                ticket.target_summary,
+                ticket.risk_level.value if isinstance(ticket.risk_level, RiskLevel) else ticket.risk_level,
+                ticket.reason,
+                ticket.status.value if isinstance(ticket.status, TicketStatus) else ticket.status,
+                json.dumps(ticket.details),
+                ticket.created_at,
+                ticket.expires_at
+            ))
+            conn.commit()
+
+    def get_approval_ticket(self, ticket_id: str) -> Optional[ApprovalTicket]:
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM approval_tickets WHERE ticket_id = ?", (ticket_id,))
+            row = cursor.fetchone()
+            if not row:
+                return None
+            return self._row_to_ticket(row)
+
+    def list_pending_tickets(self) -> List[ApprovalTicket]:
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM approval_tickets WHERE status = 'PENDING' ORDER BY created_at DESC")
+            rows = cursor.fetchall()
+            return [self._row_to_ticket(r) for r in rows]
+
+    def save_audit_log(self, audit: AuditLog):
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                INSERT INTO audit_logs (
+                    log_id, task_id, action, resource_service, permission_used, risk_level, status, details, timestamp
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                audit.log_id,
+                audit.task_id,
+                audit.action,
+                audit.resource_service,
+                audit.permission_used,
+                audit.risk_level.value if isinstance(audit.risk_level, RiskLevel) else audit.risk_level,
+                audit.status,
+                json.dumps(audit.details),
+                audit.timestamp
+            ))
+            conn.commit()
+
+    def list_audit_logs(self, limit: int = 100) -> List[AuditLog]:
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM audit_logs ORDER BY timestamp DESC LIMIT ?", (limit,))
+            rows = cursor.fetchall()
+            return [
+                AuditLog(
+                    log_id=r["log_id"],
+                    task_id=r["task_id"],
+                    action=r["action"],
+                    resource_service=r["resource_service"],
+                    permission_used=r["permission_used"],
+                    risk_level=RiskLevel(r["risk_level"]) if r["risk_level"] else RiskLevel.LOW,
+                    status=r["status"],
+                    details=json.loads(r["details"]) if r["details"] else {},
+                    timestamp=r["timestamp"]
+                )
+                for r in rows
+            ]
+
+    def save_event(self, event: SystemEvent):
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                INSERT INTO events (event_id, event_type, task_id, payload, timestamp)
+                VALUES (?, ?, ?, ?, ?)
+            """, (
+                event.event_id,
+                event.event_type,
+                event.task_id,
+                json.dumps(event.payload),
+                event.timestamp
+            ))
+            conn.commit()
+
+    def list_events(self, limit: int = 100) -> List[SystemEvent]:
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM events ORDER BY timestamp DESC LIMIT ?", (limit,))
+            rows = cursor.fetchall()
+            return [
+                SystemEvent(
+                    event_id=r["event_id"],
+                    event_type=r["event_type"],
+                    task_id=r["task_id"],
+                    payload=json.loads(r["payload"]) if r["payload"] else {},
+                    timestamp=r["timestamp"]
+                )
+                for r in rows
+            ]
+
+    def _row_to_task(self, row) -> Task:
+        raw_steps = json.loads(row["steps"]) if row["steps"] else []
+        steps = [
+            PlanStep(
+                step_id=s["step_id"],
+                tool_name=s["tool_name"],
+                parameters=s["parameters"],
+                description=s["description"],
+                risk_level=RiskLevel(s["risk_level"]),
+                status=s["status"],
+                result=s.get("result")
+            )
+            for s in raw_steps
+        ]
+        return Task(
+            task_id=row["task_id"],
+            raw_prompt=row["raw_prompt"],
+            intent=row["intent"],
+            entities=json.loads(row["entities"]) if row["entities"] else {},
+            confidence=row["confidence"],
+            status=TaskStatus(row["status"]),
+            steps=steps,
+            highest_risk=RiskLevel(row["highest_risk"]) if row["highest_risk"] else RiskLevel.LOW,
+            approval_ticket_id=row["approval_ticket_id"],
+            error_message=row["error_message"],
+            output=json.loads(row["output"]) if row["output"] else None,
+            created_at=row["created_at"],
+            updated_at=row["updated_at"]
+        )
+
+    def _row_to_ticket(self, row) -> ApprovalTicket:
+        return ApprovalTicket(
+            ticket_id=row["ticket_id"],
+            task_id=row["task_id"],
+            action_type=row["action_type"],
+            target_summary=row["target_summary"],
+            risk_level=RiskLevel(row["risk_level"]),
+            reason=row["reason"],
+            status=TicketStatus(row["status"]),
+            details=json.loads(row["details"]) if row["details"] else {},
+            created_at=row["created_at"],
+            expires_at=row["expires_at"]
+        )

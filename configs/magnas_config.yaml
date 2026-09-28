@@ -1,0 +1,33 @@
+# Magnas Configuration
+system:
+  name: "Magnas AI"
+  version: "0.1.0"
+  log_level: "INFO"
+  db_path: "magnas.db"
+
+server:
+  host: "127.0.0.1"
+  port: 8787
+  websocket_path: "/ws"
+
+policy:
+  default_risk_tolerance: "MEDIUM"
+  auto_approve_low_risk: true
+  require_token_for_high_risk: true
+  human_approval_timeout_seconds: 300
+
+nlp:
+  confidence_threshold: 0.65
+  fallback_to_rules: true
+  model_dir: "nlp/models/magnas-nlp"
+  onnx_model_path: "nlp/models/magnas-nlp/model.onnx"
+
+voice:
+  enabled: true
+  wake_word: "hey magnas"
+  stt_engine: "whisper"
+  tts_engine: "sapi"
+
+vision:
+  enabled: true
+  ocr_engine: "tesseract"

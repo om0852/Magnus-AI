@@ -1,0 +1,5 @@
+{
+  "BACKUP_DATABASE": 0,
+  "EXPORT_DATA": 1,
+  "QUERY_DATABASE": 2
+}

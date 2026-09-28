@@ -1,0 +1,10 @@
+{
+  "CHANGE_VOLUME": 0,
+  "CLOSE_APP": 1,
+  "OPEN_APP": 2,
+  "PRESS_KEY": 3,
+  "READ_FILE": 4,
+  "SEARCH_FILES": 5,
+  "TAKE_SCREENSHOT": 6,
+  "TYPE_TEXT": 7
+}
