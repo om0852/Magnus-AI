@@ -221,21 +221,44 @@ if HAS_FASTAPI:
 else:
     app = None
 
+main_event_loop: Optional[asyncio.AbstractEventLoop] = None
+
 def _on_wake_word_command(cmd: str):
     print(f"[Daemon] Received wake word command: '{cmd}'")
     if task_machine_ref and cmd:
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        task = loop.run_until_complete(task_machine_ref.create_task(cmd))
-        loop.run_until_complete(task_machine_ref.process_task(task.task_id))
-        loop.close()
+        try:
+            loop = main_event_loop
+            if loop and loop.is_running():
+                async def _run_cmd():
+                    t = await task_machine_ref.create_task(cmd)
+                    await task_machine_ref.process_task(t.task_id)
+                asyncio.run_coroutine_threadsafe(_run_cmd(), loop)
+            else:
+                new_loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(new_loop)
+                task = new_loop.run_until_complete(task_machine_ref.create_task(cmd))
+                new_loop.run_until_complete(task_machine_ref.process_task(task.task_id))
+                new_loop.close()
+        except Exception as e:
+            print(f"[WakeWord Dispatch Error]: {e}")
 
 def init_web_server(db: Database, event_bus: EventBus, approval_mgr: ApprovalManager, task_machine: TaskStateMachine):
-    global db_ref, event_bus_ref, approval_mgr_ref, task_machine_ref, wake_word_listener
+    global db_ref, event_bus_ref, approval_mgr_ref, task_machine_ref, wake_word_listener, main_event_loop
     db_ref = db
     event_bus_ref = event_bus
     approval_mgr_ref = approval_mgr
     task_machine_ref = task_machine
+
+    # Cleanup orphan stale tasks from previous crashes/restarts
+    db.cleanup_stale_tasks()
+
+    try:
+        main_event_loop = asyncio.get_running_loop()
+    except RuntimeError:
+        try:
+            main_event_loop = asyncio.get_event_loop()
+        except Exception:
+            main_event_loop = None
 
     wake_word_listener = WakeWordListener(on_command_callback=_on_wake_word_command)
     # Start wake word listener by default

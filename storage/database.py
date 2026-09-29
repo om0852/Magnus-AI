@@ -6,9 +6,27 @@ from typing import List, Optional, Dict, Any
 from storage.models import Task, ApprovalTicket, SystemEvent, AuditLog, TaskStatus, TicketStatus, RiskLevel, PlanStep
 
 class Database:
-    def __init__(self, db_path: str = "magnas.db"):
-        self.db_path = db_path
+    def __init__(self, db_path: str = None):
+        if not db_path or db_path == "magnas.db":
+            base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            db_path = os.path.join(base_dir, "storage", "magnas.db")
+        self.db_path = os.path.abspath(db_path)
+        os.makedirs(os.path.dirname(self.db_path), exist_ok=True)
         self._init_db()
+
+    def cleanup_stale_tasks(self):
+        """Marks old orphan EXECUTING or WAITING_APPROVAL tasks as FAILED on server initialization."""
+        try:
+            with self._get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("""
+                    UPDATE tasks
+                    SET status = 'FAILED', error_message = 'Task interrupted by system restart or thread timeout.'
+                    WHERE status IN ('EXECUTING', 'WAITING_APPROVAL', 'PARSING')
+                """)
+                conn.commit()
+        except Exception as e:
+            print(f"[Database Warning] Stale task cleanup: {e}")
 
     def _get_connection(self):
         conn = sqlite3.connect(self.db_path, timeout=10.0)
