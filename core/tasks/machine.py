@@ -204,9 +204,32 @@ class TaskStateMachine:
                 await self.event_bus.publish("task_completed", task.task_id, task.to_dict())
 
         except Exception as e:
+            err_msg = str(e)
             task.status = TaskStatus.FAILED
-            task.error_message = str(e)
+            task.error_message = err_msg
             task.updated_at = time.time()
+
+            # Auto-Trigger Self-Healing Analysis & Self-Learning Failure Memory
+            try:
+                from core.planner.self_healing import self_healing_engine
+                from core.memory.self_learning import self_learning_engine
+
+                healing_report = self_healing_engine.analyze_and_fix(
+                    err_msg, context={"prompt": task.raw_prompt, "intent": task.intent}
+                )
+                task.output = task.output or {}
+                task.output["self_healing_report"] = healing_report
+
+                self_learning_engine.auto_fix_and_learn_failure(
+                    prompt=task.raw_prompt,
+                    error_msg=err_msg,
+                    corrected_intent=task.intent,
+                    target_tool="auto_healed_tool",
+                    parameters={"error": err_msg, "healing_fix": healing_report.get("fix_applied", "")}
+                )
+            except Exception as h_err:
+                print(f"[SelfHealing Machine Warning]: {h_err}")
+
             self.db.save_task(task)
             await self.event_bus.publish("task_failed", task.task_id, task.to_dict())
 

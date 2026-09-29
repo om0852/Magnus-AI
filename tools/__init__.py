@@ -7,6 +7,7 @@ import tools.ultralight_llm
 import tools.code_fixer
 import tools.mesh_network
 import tools.self_learning
+import tools.credentials
 import tools.applications
 
 import tools.browser

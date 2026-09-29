@@ -10,6 +10,29 @@ try:
 except ImportError:
     HAS_PIL = False
 
+from vision.screen_vision import screen_vision
+
+@registry.register(
+    name="inspect_active_window",
+    description="Inspect currently focused GUI window title, process ID, executable name, and position on screen.",
+    risk_level=RiskLevel.LOW,
+    schema={
+        "type": "object",
+        "properties": {},
+        "required": []
+    }
+)
+def inspect_active_window() -> Dict[str, Any]:
+    try:
+        info = screen_vision.inspect_active_window()
+        return {
+            "success": True,
+            "output": f"Active Window: '{info.get('title')}' | PID: {info.get('process_id')} | Position: {info.get('position')}",
+            "window_info": info
+        }
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
 @registry.register(
     name="read_screen_text",
     description="Perform OCR on desktop screenshot to extract visible screen text.",
