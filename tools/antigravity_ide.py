@@ -32,52 +32,57 @@ def develop_project_in_antigravity(
     slash_command: str = "/goal"
 ) -> str:
     user_home = os.path.expanduser("~")
-    workspace_dir = os.path.join(user_home, "Documents", project_name.replace(" ", "_"))
+    workspace_dir = os.path.abspath(os.path.join(user_home, "Documents", project_name.replace(" ", "_")))
     os.makedirs(workspace_dir, exist_ok=True)
 
-    # Strategy 1: CLI Direct Agent Control via 'agy goal' or 'agy' if available in PATH
-    agy_binary = shutil.which("agy") or shutil.which("antigravity-ide") or shutil.which("antigravity")
-    cli_success = False
-    cli_output = ""
+    # Resolve Antigravity IDE CLI binary
+    local_appdata = os.environ.get("LOCALAPPDATA", "")
+    ide_cli = (
+        shutil.which("antigravity-ide")
+        or shutil.which("antigravity-ide.cmd")
+        or shutil.which("agy")
+        or os.path.join(local_appdata, "Programs", "Antigravity IDE", "bin", "antigravity-ide.cmd")
+    )
 
-    if agy_binary:
+    details = []
+
+    # 1. Open project folder in Antigravity IDE
+    if ide_cli and os.path.exists(ide_cli):
         try:
-            full_cmd = f'"{agy_binary}" goal "{prompt}"'
-            proc = subprocess.Popen(full_cmd, shell=True, cwd=workspace_dir, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            cli_success = True
-            cli_output = f"Triggered 'agy goal' process (PID {proc.pid}) in workspace '{workspace_dir}'."
+            subprocess.Popen(f'"{ide_cli}" "{workspace_dir}"', shell=True)
+            details.append(f"Opened workspace folder '{workspace_dir}' in Antigravity IDE.")
+            time.sleep(2.0)
         except Exception as e:
-            cli_output = f"CLI trigger attempt: {e}"
+            details.append(f"Folder launch note: {e}")
 
-    # Strategy 2: GUI Automation (Launch Antigravity IDE window & send IDE Chat prompt)
-    gui_output = ""
-    try:
-        from tools.applications import open_application
-        open_msg = open_application("antigravity ide")
-        time.sleep(2.5)
+        # 2. Trigger native Antigravity IDE Chat Agent session directly in project workspace
+        try:
+            chat_payload = f"{slash_command} {prompt}" if slash_command and not prompt.startswith("/") else prompt
+            chat_cmd = f'"{ide_cli}" chat -m agent "{chat_payload}"'
+            proc = subprocess.Popen(chat_cmd, cwd=workspace_dir, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            details.append(f"Triggered Antigravity IDE Chat Agent session (PID {proc.pid}) with command '{slash_command}'.")
+        except Exception as e:
+            details.append(f"Native chat trigger note: {e}")
 
-        if HAS_PYAUTOGUI:
-            # Focus IDE Chat hotkey (Ctrl + L or Ctrl + Alt + I)
+    # 3. Fallback / GUI Keyboard Focus
+    if HAS_PYAUTOGUI:
+        try:
+            time.sleep(1.0)
             pyautogui.hotkey('ctrl', 'l')
-            time.sleep(0.5)
-
-            # Format command with slash command if specified
+            time.sleep(0.3)
             chat_payload = f"{slash_command} {prompt}" if slash_command and not prompt.startswith("/") else prompt
             pyautogui.write(chat_payload, interval=0.01)
-            time.sleep(0.3)
+            time.sleep(0.2)
             pyautogui.press('enter')
-
-            gui_output = f"Focused Antigravity IDE Chat window ({open_msg}), typed command '{slash_command}', and triggered execution."
-        else:
-            gui_output = f"Opened Antigravity IDE application window ({open_msg})."
-    except Exception as e:
-        gui_output = f"GUI activation: {e}"
+            details.append(f"Sent IDE chat keyboard hotkey focus sequence.")
+        except Exception as e:
+            pass
 
     res_msg = (
-        f"[Antigravity IDE Integration Success]\n"
-        f"Workspace: {workspace_dir}\n"
+        f"[Antigravity IDE Project Development Triggered]\n"
+        f"Workspace Directory: '{workspace_dir}'\n"
         f"Prompt Sent: '{prompt}'\n"
-        f"Slash Command: {slash_command}\n"
-        f"Details: {cli_output or gui_output}"
+        f"Slash Command: '{slash_command}'\n"
+        f"Execution Summary: {' | '.join(details)}"
     )
     return res_msg
