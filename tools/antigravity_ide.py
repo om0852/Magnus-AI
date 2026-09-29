@@ -36,7 +36,7 @@ def develop_project_in_antigravity(
     os.makedirs(workspace_dir, exist_ok=True)
 
     # Strategy 1: CLI Direct Agent Control via 'agy goal' or 'agy' if available in PATH
-    agy_binary = shutil.which("agy") or shutil.which("antigravity")
+    agy_binary = shutil.which("agy") or shutil.which("antigravity-ide") or shutil.which("antigravity")
     cli_success = False
     cli_output = ""
 
@@ -52,8 +52,8 @@ def develop_project_in_antigravity(
     # Strategy 2: GUI Automation (Launch Antigravity IDE window & send IDE Chat prompt)
     gui_output = ""
     try:
-        # Launch Antigravity IDE
-        subprocess.Popen('start "" "antigravity.exe"', shell=True)
+        from tools.applications import open_application
+        open_msg = open_application("antigravity ide")
         time.sleep(2.5)
 
         if HAS_PYAUTOGUI:
@@ -67,9 +67,9 @@ def develop_project_in_antigravity(
             time.sleep(0.3)
             pyautogui.press('enter')
 
-            gui_output = f"Focused Antigravity IDE Chat window, typed command '{slash_command}', and triggered execution."
+            gui_output = f"Focused Antigravity IDE Chat window ({open_msg}), typed command '{slash_command}', and triggered execution."
         else:
-            gui_output = "Opened Antigravity IDE application window."
+            gui_output = f"Opened Antigravity IDE application window ({open_msg})."
     except Exception as e:
         gui_output = f"GUI activation: {e}"
 
