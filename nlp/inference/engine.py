@@ -182,6 +182,21 @@ class InferenceEngine:
                 "entities": {}
             }
 
+        # Priority Check: Screen Activity & Screen Text Reading Intents
+        if any(kw in lower for kw in ["what am i doing", "tell me what i'm doing", "tell me what i am doing", "check my activity", "inspect window", "what window is open", "what app am i using"]):
+            return {
+                "intent": "INSPECT_ACTIVE_WINDOW",
+                "confidence": 0.99,
+                "entities": {}
+            }
+
+        if any(kw in lower for kw in ["read screen", "read my screen", "ocr screen", "what is on my screen", "extract screen text"]):
+            return {
+                "intent": "READ_SCREEN_TEXT",
+                "confidence": 0.99,
+                "entities": {}
+            }
+
         # Priority Check: Self-Learning Command Intents
         if lower in ["list learned rules", "show learned rules", "view learned rules"]:
             return {

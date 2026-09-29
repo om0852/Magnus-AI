@@ -24,12 +24,22 @@ class ScreenVisionEngine:
         shots_dir = os.path.join(user_home, "Pictures")
         os.makedirs(shots_dir, exist_ok=True)
         img_path = os.path.join(shots_dir, f"vision_shot_{int(time.time())}.png")
-        
+
         if HAS_VISION_DEPS:
-            shot = pyautogui.screenshot()
-            shot.save(img_path)
-            self.last_screenshot_path = img_path
-            return img_path
+            try:
+                shot = pyautogui.screenshot()
+                shot.save(img_path)
+                self.last_screenshot_path = img_path
+                return img_path
+            except Exception:
+                try:
+                    from PIL import ImageGrab
+                    shot = ImageGrab.grab(all_screens=False)
+                    shot.save(img_path)
+                    self.last_screenshot_path = img_path
+                    return img_path
+                except Exception:
+                    pass
         return ""
 
     def inspect_active_window(self) -> Dict[str, Any]:

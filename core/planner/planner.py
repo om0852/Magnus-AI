@@ -281,6 +281,31 @@ class TaskPlanner:
                 risk_level=RiskLevel.LOW
             ))
 
+        elif intent == "READ_SCREEN_TEXT":
+            steps.append(PlanStep(
+                step_id=f"step_{uuid.uuid4().hex[:6]}",
+                tool_name="read_screen_text",
+                parameters={},
+                description="Step 1/1 (Screen Vision): Perform OCR to extract visible text from current screen",
+                risk_level=RiskLevel.LOW
+            ))
+
+        elif intent == "INSPECT_ACTIVE_WINDOW":
+            steps.append(PlanStep(
+                step_id=f"step_{uuid.uuid4().hex[:6]}",
+                tool_name="inspect_active_window",
+                parameters={},
+                description="Step 1/2 (Window Inspection): Query focused GUI window title, PID, and position",
+                risk_level=RiskLevel.LOW
+            ))
+            steps.append(PlanStep(
+                step_id=f"step_{uuid.uuid4().hex[:6]}",
+                tool_name="read_screen_text",
+                parameters={},
+                description="Step 2/2 (Screen Reading): Extract screen text to report active user activity",
+                risk_level=RiskLevel.LOW
+            ))
+
         elif intent == "TYPE_TEXT":
             text_str = entities.get("text", "")
             steps.append(PlanStep(
